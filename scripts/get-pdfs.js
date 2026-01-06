@@ -17,7 +17,7 @@ const argv = yargs(hideBin(process.argv))
   })
   .help().argv
 
-const apiKey = process.env.SCRIPT_API_KEY
+const apiKey = "spF1SmX3G24WPjnhJ9UxXHlEEpngtZts"
 
 async function main() {
   const anvilClient = new Anvil({ apiKey })
@@ -35,6 +35,54 @@ async function main() {
 
     // Process the data here
     // TODO: Add your PDF processing logic
+
+    for (const employee of data) {
+      const formsToFill = employee["formsToFill"]
+      // TODO: check for empty or null formsToFill
+      for (const formEid of formsToFill) {
+        const result = await anvilClient.requestGraphQL({
+          query: `
+            query FormDataQuery ($eid: String!) {
+              cast (eid: $eid) {
+                eid
+                title
+              }
+            }
+          `,
+          variables: { eid: formEid },
+        })
+        // Error check 
+        const resultData = result.data.data.cast
+        const title = resultData["title"]
+
+
+        //Fill PDF
+
+        const payload = {
+          "title": title,
+          "fontSize": 10,
+          "textColor": "#CC0000",
+          "data": employee
+        }
+        const { statusCode, data } = await anvilClient.fillPDF(formEid, payload)
+        // check status code before filling pdf 
+
+
+        // Check if title is usps 1583
+        if (title === "USPS 1583"){
+          fs.writeFileSync(`pdfs/${formEid}.pdf`, data, { encoding: null })
+        }
+        
+        fs.writeFileSync(`pdfs/${title}.pdf`, data, { encoding: null })
+      
+        
+        
+
+      }
+
+    }
+
+    // for loop it would through employees 
     
   } catch (error) {
     console.error('Error:', error.message)
